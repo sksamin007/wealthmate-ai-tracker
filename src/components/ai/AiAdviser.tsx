@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Bot, Send } from "lucide-react";
+import { Bot, Send, Key, DollarSign, LightbulbIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,7 +52,7 @@ const AiAdviser = () => {
   const handleSend = async () => {
     if (!input.trim()) return;
 
-    const userMessage = { role: "user" as const, content: input };
+    const userMessage: Message = { role: "user", content: input };
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
@@ -72,7 +72,7 @@ const AiAdviser = () => {
                 role: 'system',
                 content: 'You are a financial advisor. Provide helpful, concise financial advice.'
               },
-              ...messages.map(msg => ({ role: msg.role, content: msg.content })),
+              ...messages.map(msg => ({ role: msg.role === "user" ? "user" : "assistant", content: msg.content })),
               { role: 'user', content: input }
             ],
             max_tokens: 250
@@ -84,7 +84,7 @@ const AiAdviser = () => {
           throw new Error(data.error.message || "Error fetching AI response");
         }
         
-        const aiMessage = { role: "ai", content: data.choices[0].message.content };
+        const aiMessage: Message = { role: "ai", content: data.choices[0].message.content };
         setMessages(prev => [...prev, aiMessage]);
       } else {
         // Simulate AI response for testing
@@ -161,7 +161,8 @@ const AiAdviser = () => {
               content: `Give a smart financial tip for someone with ৳${netWorth} net worth.` 
             }
           ],
-          max_tokens: 150
+          max_tokens: 150,
+          temperature: 0.7
         })
       });
       
@@ -198,34 +199,40 @@ const AiAdviser = () => {
           <Card className="glass-card">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Bot className="h-5 w-5" />
+                <LightbulbIcon className="h-5 w-5" />
                 Get Personalized Financial Advice
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="api-key">OpenAI API Key</Label>
-                <Input
-                  id="api-key"
-                  type="password"
-                  placeholder="Enter your API key"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                />
+                <Label htmlFor="openaiKey">OpenAI API Key</Label>
+                <div className="flex items-center space-x-2">
+                  <Key className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="openaiKey"
+                    type="password"
+                    placeholder="Enter your API key"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                  />
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Your API key is stored locally in your browser and never sent to our servers.
                 </p>
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="net-worth">Your Net Worth (৳)</Label>
-                <Input
-                  id="net-worth"
-                  type="number"
-                  placeholder="Enter your net worth"
-                  value={netWorth}
-                  onChange={(e) => setNetWorth(e.target.value === '' ? '' : Number(e.target.value))}
-                />
+                <Label htmlFor="netWorth">Your Net Worth (৳)</Label>
+                <div className="flex items-center space-x-2">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="netWorth"
+                    type="number"
+                    placeholder="Enter your net worth"
+                    value={netWorth}
+                    onChange={(e) => setNetWorth(e.target.value === '' ? '' : Number(e.target.value))}
+                  />
+                </div>
               </div>
               
               <Button 
@@ -364,21 +371,6 @@ const AiAdviser = () => {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-        
-        <TabsContent value="tips" className="space-y-4">
-          <div className="grid gap-6 md:grid-cols-2">
-            {sampleTips.map((tip, i) => (
-              <Card key={i} className="glass-card">
-                <CardHeader>
-                  <CardTitle className="text-lg">{tip.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p>{tip.content}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
         </TabsContent>
       </Tabs>
     </div>
