@@ -1,40 +1,18 @@
 
 import { useState } from "react";
-import { Bot, Send, LightbulbIcon } from "lucide-react";
+import { Bot, Send, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Message {
   role: "user" | "ai";
   content: string;
 }
 
-// Sample tips that simulate AI responses before API integration
-const sampleTips = [
-  {
-    title: "Emergency Fund",
-    content: "Aim to save 3-6 months of living expenses in an easily accessible account for emergencies."
-  },
-  {
-    title: "Debt Repayment",
-    content: "Consider using either the avalanche method (highest interest first) or snowball method (smallest balance first) for debt repayment."
-  },
-  {
-    title: "401(k) Match",
-    content: "If your employer offers a 401(k) match, contribute at least enough to get the full match—it's essentially free money."
-  },
-  {
-    title: "Asset Allocation",
-    content: "A common rule of thumb is to subtract your age from 110 to determine what percentage of your portfolio should be in stocks."
-  },
-  {
-    title: "Taxes & Retirement",
-    content: "Consider using tax-advantaged accounts like IRAs and HSAs to reduce your tax burden while saving for the future."
-  }
-];
+// OpenAI API key
+const OPENAI_API_KEY = "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";
 
 const AiAdviser = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -42,7 +20,7 @@ const AiAdviser = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Handle sending chat messages
+  // Handle sending chat messages to OpenAI API
   const handleSend = async () => {
     if (!input.trim()) return;
 
@@ -53,26 +31,40 @@ const AiAdviser = () => {
     setIsLoading(true);
 
     try {
-      // Simulate AI response (in a real app, you'd replace this with an API call)
-      setTimeout(() => {
-        // Get a random financial tip as a response
-        const tipIndex = Math.floor(Math.random() * sampleTips.length);
-        const tipContent = sampleTips[tipIndex].content;
-        
-        // Create personalized response based on user question
-        let aiResponse = `Based on your question, here's my advice: ${tipContent}`;
-        
-        if (input.toLowerCase().includes("invest")) {
-          aiResponse = "When investing, consider your risk tolerance, time horizon, and diversification across different asset classes.";
-        } else if (input.toLowerCase().includes("debt") || input.toLowerCase().includes("loan")) {
-          aiResponse = "Focus on paying off high-interest debt first while making minimum payments on other debts. Consider debt consolidation if you have multiple high-interest loans.";
-        } else if (input.toLowerCase().includes("save") || input.toLowerCase().includes("saving")) {
-          aiResponse = "The 50/30/20 rule suggests allocating 50% of income to needs, 30% to wants, and 20% to savings and debt repayment.";
-        }
-        
-        setMessages(prev => [...prev, { role: "ai", content: aiResponse }]);
-        setIsLoading(false);
-      }, 1000);
+      // Call OpenAI API
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: "You are a helpful financial advisor. Provide short, practical financial advice based on the user's question. Keep your responses brief, focused, and actionable."
+            },
+            ...messages.map(msg => ({
+              role: msg.role === "user" ? "user" : "assistant",
+              content: msg.content
+            })),
+            { role: "user", content: input }
+          ],
+          max_tokens: 200,
+          temperature: 0.7
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || "Failed to get AI response");
+      }
+
+      const data = await response.json();
+      const aiMessage = data.choices[0].message.content;
+      
+      setMessages(prev => [...prev, { role: "ai", content: aiMessage }]);
     } catch (error) {
       console.error('Error fetching AI response:', error);
       toast({
@@ -80,6 +72,13 @@ const AiAdviser = () => {
         description: error instanceof Error ? error.message : "Failed to get AI response. Please try again.",
         variant: "destructive",
       });
+      
+      // Add error message to the chat
+      setMessages(prev => [...prev, { 
+        role: "ai", 
+        content: "Sorry, I couldn't process your request. Please try again later." 
+      }]);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -99,7 +98,7 @@ const AiAdviser = () => {
           <div className="h-[350px] overflow-y-auto space-y-4 p-4 border rounded-md">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-                <Bot className="h-12 w-12 mb-4 opacity-50" />
+                <Sparkles className="h-12 w-12 mb-4 opacity-50" />
                 <p>Ask me any financial question to get started!</p>
                 <p className="text-sm mt-2">Examples:</p>
                 <ul className="text-sm mt-1">
